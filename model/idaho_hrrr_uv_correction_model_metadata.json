@@ -1,0 +1,41 @@
+{
+  "model_file": "idaho_hrrr_uv_correction_model.joblib",
+  "sha256": "dea296ef741f4957b8b1cd481a3c5028bf5b3ea29f7f4bc055630ee2f282ca40",
+  "source_file": "wirewarrior_hrrr_paired_2025-04-01_2026-04-01.csv.gz",
+  "feature_columns": [
+    "hrrr_u10_ms",
+    "hrrr_v10_ms",
+    "hrrr_wind10_ms",
+    "hrrr_gust_ms",
+    "hrrr_u80_ms",
+    "hrrr_v80_ms",
+    "hrrr_80m_vector_speed_ms",
+    "hrrr_t2m_k",
+    "hrrr_d2m_k",
+    "hrrr_pressure_sfc_pa",
+    "hrrr_pbl_height_m",
+    "hrrr_friction_velocity_ms",
+    "hrrr_roughness_length_m",
+    "hrrr_dswrf_wm2",
+    "hrrr_prate_kgm2s",
+    "hrrr_total_cloud_pct"
+  ],
+  "training_rows": 202462,
+  "training_period_start": "2025-04-01 00:00:00+00:00",
+  "training_period_end": "2026-03-28 00:00:00+00:00",
+  "validation_metrics_before_final_refit": {
+    "validation_start_utc": "2026-01-14 20:00:00+00:00",
+    "n_total_rows_used": 202462,
+    "n_train_rows": 165582,
+    "n_validation_rows": 36880,
+    "raw_u_mae_ms": 1.5180634186775583,
+    "corrected_u_mae_ms": 1.270936062700221,
+    "raw_v_mae_ms": 1.053364229007546,
+    "corrected_v_mae_ms": 0.9873216989693684,
+    "raw_vector_speed_mae_ms": 1.2136322004908533,
+    "corrected_vector_speed_mae_ms": 1.1966184255009613,
+    "raw_vector_speed_rmse_ms": 1.5827452195610383,
+    "corrected_vector_speed_rmse_ms": 1.6235668675150057
+  },
+  "target_definition": "Predict obs_u - HRRR_u10 and obs_v - HRRR_v10; add predictions to HRRR 10m U/V."
+}

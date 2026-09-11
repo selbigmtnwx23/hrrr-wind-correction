@@ -1,0 +1,161 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>WireWarrior Idaho GIS 3D — HRRR Wind Speed Difference</title>
+<link rel="stylesheet" href="https://js.arcgis.com/4.32/esri/themes/dark/main.css"/>
+<script src="https://js.arcgis.com/4.32/"></script>
+<style>
+html,body,#viewDiv{padding:0;margin:0;height:100%;width:100%;background:#111}
+#info{position:absolute;z-index:10;left:16px;top:16px;background:rgba(10,18,25,.9);
+color:white;padding:14px 16px;border-radius:8px;font:14px/1.45 Arial;max-width:430px}
+#info b{font-size:19px}
+.small{font-size:12px;opacity:.84}
+.legend{margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.25)}
+#controls{position:absolute;z-index:10;right:16px;top:16px;background:rgba(10,18,25,.9);
+color:white;padding:12px 14px;border-radius:8px;font:13px Arial;min-width:190px}
+button{margin:3px 0;width:100%;padding:6px;border:0;border-radius:4px;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="viewDiv"></div>
+
+<div id="info">
+<b>HRRR vs. Sensor Wind Speed Difference</b><br>
+WireWarrior, Idaho • 42.878300° N, 115.008900° W<br>
+Sensor height: 22.1 m AGL • Units: m/s
+<div class="small">
+Value = raw HRRR 10 m wind speed − observed sensor wind speed.<br>
+Positive = HRRR too high; negative = HRRR too low.<br>
+Each colored marker summarizes one observed 30° wind-direction sector and speed bin.
+Click a marker for mean bias, MAE, RMSE, mean observed speed, and sample count.
+</div>
+<div class="legend">
+<b>Marker color = mean signed speed error</b><br>
+<span style="color:#6baed6">●</span> HRRR lower than sensor &nbsp;
+<span style="color:#fdae61">●</span> HRRR higher than sensor
+</div>
+</div>
+
+<div id="controls">
+<b>Speed-bin layers</b><br>
+<button id="b1">Toggle 1–5 m/s</button>
+<button id="b2">Toggle 5–10 m/s</button>
+<button id="b3">Toggle 10+ m/s</button>
+</div>
+
+<script>
+require([
+ "esri/Map","esri/views/SceneView","esri/Graphic",
+ "esri/geometry/Point","esri/geometry/Polyline",
+ "esri/geometry/geometryEngine","esri/symbols/SimpleMarkerSymbol",
+ "esri/symbols/SimpleLineSymbol","esri/symbols/SimpleFillSymbol",
+ "esri/layers/GraphicsLayer"
+], function(Map,SceneView,Graphic,Point,Polyline,geometryEngine,
+            SimpleMarkerSymbol,SimpleLineSymbol,SimpleFillSymbol,GraphicsLayer) {
+
+ const DATA = [{"speed_bin": "10+ m/s", "dir_sector": 90, "n": 61, "mean_speed_error_ms": -2.0807240437158474, "mae_speed_error_ms": 2.1446781420765033, "rmse_speed_error_ms": 2.74151364882338, "mean_obs_speed_ms": 10.789781420765028}, {"speed_bin": "10+ m/s", "dir_sector": 120, "n": 72, "mean_speed_error_ms": -0.7813751177024482, "mae_speed_error_ms": 0.814551043628374, "rmse_speed_error_ms": 0.967778815634036, "mean_obs_speed_ms": 11.089312617702449}, {"speed_bin": "10+ m/s", "dir_sector": 240, "n": 24, "mean_speed_error_ms": -3.1076750000000004, "mae_speed_error_ms": 3.1076750000000004, "rmse_speed_error_ms": 3.244288548999097, "mean_obs_speed_ms": 10.035}, {"speed_bin": "10+ m/s", "dir_sector": 270, "n": 270, "mean_speed_error_ms": -1.6456022683598666, "mae_speed_error_ms": 1.8355213651597322, "rmse_speed_error_ms": 2.6305911137329336, "mean_obs_speed_ms": 10.932468564656164}, {"speed_bin": "10+ m/s", "dir_sector": 300, "n": 3559, "mean_speed_error_ms": -1.3151454166890997, "mae_speed_error_ms": 1.5912724305740773, "rmse_speed_error_ms": 2.182369390249344, "mean_obs_speed_ms": 11.91722692834968}, {"speed_bin": "10+ m/s", "dir_sector": 330, "n": 212, "mean_speed_error_ms": -1.2895158805031446, "mae_speed_error_ms": 1.7763658805031444, "rmse_speed_error_ms": 2.68982180350621, "mean_obs_speed_ms": 11.987578616352202}, {"speed_bin": "1–5 m/s", "dir_sector": 0, "n": 1408, "mean_speed_error_ms": 0.25162514605803804, "mae_speed_error_ms": 1.020013924467129, "rmse_speed_error_ms": 1.425479311530892, "mean_obs_speed_ms": 2.152047581214689}, {"speed_bin": "1–5 m/s", "dir_sector": 30, "n": 1459, "mean_speed_error_ms": 0.30772239156118236, "mae_speed_error_ms": 1.0613824251310384, "rmse_speed_error_ms": 1.5286517211332642, "mean_obs_speed_ms": 2.020217430234568}, {"speed_bin": "1–5 m/s", "dir_sector": 60, "n": 2295, "mean_speed_error_ms": 0.43285450534452097, "mae_speed_error_ms": 1.2107764569477157, "rmse_speed_error_ms": 1.8344496149514835, "mean_obs_speed_ms": 1.9728599173134311}, {"speed_bin": "1–5 m/s", "dir_sector": 90, "n": 8226, "mean_speed_error_ms": 0.46270132542823705, "mae_speed_error_ms": 1.1243531023167486, "rmse_speed_error_ms": 1.5306811114014252, "mean_obs_speed_ms": 2.891110709582704}, {"speed_bin": "1–5 m/s", "dir_sector": 120, "n": 15594, "mean_speed_error_ms": 0.6591105750366144, "mae_speed_error_ms": 1.1336081475264548, "rmse_speed_error_ms": 1.4242705020652493, "mean_obs_speed_ms": 2.8543725787404797}, {"speed_bin": "1–5 m/s", "dir_sector": 150, "n": 28636, "mean_speed_error_ms": 0.8288764615895898, "mae_speed_error_ms": 1.1534084719320514, "rmse_speed_error_ms": 1.4128134095503766, "mean_obs_speed_ms": 2.6020285251404003}, {"speed_bin": "1–5 m/s", "dir_sector": 180, "n": 15999, "mean_speed_error_ms": 0.6172025351559246, "mae_speed_error_ms": 1.049691941675804, "rmse_speed_error_ms": 1.3352790307461038, "mean_obs_speed_ms": 2.3712665004087983}, {"speed_bin": "1–5 m/s", "dir_sector": 210, "n": 4390, "mean_speed_error_ms": 0.5324010573707818, "mae_speed_error_ms": 1.2471419218824453, "rmse_speed_error_ms": 1.625761234705515, "mean_obs_speed_ms": 2.1707966647248904}, {"speed_bin": "1–5 m/s", "dir_sector": 240, "n": 8930, "mean_speed_error_ms": -0.08526563248379011, "mae_speed_error_ms": 1.2142417048726266, "rmse_speed_error_ms": 1.5874147535778578, "mean_obs_speed_ms": 3.122464691834294}, {"speed_bin": "1–5 m/s", "dir_sector": 270, "n": 19349, "mean_speed_error_ms": -0.007793979667781732, "mae_speed_error_ms": 1.2037955720147695, "rmse_speed_error_ms": 1.5605001025760308, "mean_obs_speed_ms": 3.492278526672795}, {"speed_bin": "1–5 m/s", "dir_sector": 300, "n": 22166, "mean_speed_error_ms": 0.2132574727154382, "mae_speed_error_ms": 1.1480036276653, "rmse_speed_error_ms": 1.5122895827989227, "mean_obs_speed_ms": 3.3411294667413873}, {"speed_bin": "1–5 m/s", "dir_sector": 330, "n": 7391, "mean_speed_error_ms": 0.3669145213858602, "mae_speed_error_ms": 1.1022517000456478, "rmse_speed_error_ms": 1.5292693261792631, "mean_obs_speed_ms": 2.7425947872327296}, {"speed_bin": "5–10 m/s", "dir_sector": 0, "n": 96, "mean_speed_error_ms": -0.9643003707627118, "mae_speed_error_ms": 2.8578719691619585, "rmse_speed_error_ms": 3.417272039232864, "mean_obs_speed_ms": 6.744251412429378}, {"speed_bin": "5–10 m/s", "dir_sector": 30, "n": 48, "mean_speed_error_ms": -0.5998437499999998, "mae_speed_error_ms": 1.6772270833333334, "rmse_speed_error_ms": 2.097805235686812, "mean_obs_speed_ms": 6.260000000000001}, {"speed_bin": "5–10 m/s", "dir_sector": 60, "n": 48, "mean_speed_error_ms": -1.7914437500000002, "mae_speed_error_ms": 2.081863194444445, "rmse_speed_error_ms": 2.3829289386960326, "mean_obs_speed_ms": 5.795000000000001}, {"speed_bin": "5–10 m/s", "dir_sector": 90, "n": 3843, "mean_speed_error_ms": -0.4842666465258575, "mae_speed_error_ms": 1.0474194705615814, "rmse_speed_error_ms": 1.3813772489620686, "mean_obs_speed_ms": 6.475623997553701}, {"speed_bin": "5–10 m/s", "dir_sector": 120, "n": 4672, "mean_speed_error_ms": -0.3109724867235363, "mae_speed_error_ms": 1.0386429989038297, "rmse_speed_error_ms": 1.3815625352184375, "mean_obs_speed_ms": 6.063545324908468}, {"speed_bin": "5–10 m/s", "dir_sector": 150, "n": 4812, "mean_speed_error_ms": -0.5027820024909955, "mae_speed_error_ms": 1.1391386149578868, "rmse_speed_error_ms": 1.4970889172730493, "mean_obs_speed_ms": 6.3757526591825995}, {"speed_bin": "5–10 m/s", "dir_sector": 180, "n": 336, "mean_speed_error_ms": -1.1565473458235753, "mae_speed_error_ms": 1.758596083788707, "rmse_speed_error_ms": 2.5727098605995415, "mean_obs_speed_ms": 5.965444964871194}, {"speed_bin": "5–10 m/s", "dir_sector": 210, "n": 216, "mean_speed_error_ms": -1.232178240740741, "mae_speed_error_ms": 1.7996050925925926, "rmse_speed_error_ms": 2.1940116755509083, "mean_obs_speed_ms": 5.755}, {"speed_bin": "5–10 m/s", "dir_sector": 240, "n": 4670, "mean_speed_error_ms": -1.5142240475127888, "mae_speed_error_ms": 1.7463735861129115, "rmse_speed_error_ms": 2.1251524595128393, "mean_obs_speed_ms": 6.396268201688377}, {"speed_bin": "5–10 m/s", "dir_sector": 270, "n": 14794, "mean_speed_error_ms": -0.47098304350024767, "mae_speed_error_ms": 1.3399333123380757, "rmse_speed_error_ms": 1.7350471132861116, "mean_obs_speed_ms": 6.422999867888513}, {"speed_bin": "5–10 m/s", "dir_sector": 300, "n": 19779, "mean_speed_error_ms": -0.014155235981752064, "mae_speed_error_ms": 1.129523912751902, "rmse_speed_error_ms": 1.5099008409417352, "mean_obs_speed_ms": 7.040448506622331}, {"speed_bin": "5–10 m/s", "dir_sector": 330, "n": 2026, "mean_speed_error_ms": -0.09382992572431316, "mae_speed_error_ms": 1.0985977941708243, "rmse_speed_error_ms": 1.6261350026750765, "mean_obs_speed_ms": 6.48482128801454}];
+ const LAT=42.8783, LON=-115.0089;
+
+ const map = new Map({basemap:"satellite",ground:"world-elevation"});
+ const view = new SceneView({
+   container:"viewDiv",map:map,
+   camera:{position:{longitude:LON,latitude:LAT-0.11,z:10500},heading:0,tilt:62},
+   qualityProfile:"high"
+ });
+
+ const base = new GraphicsLayer({elevationInfo:{mode:"on-the-ground"}});
+ const g1 = new GraphicsLayer({title:"1–5 m/s",elevationInfo:{mode:"relative-to-ground",offset:25}});
+ const g2 = new GraphicsLayer({title:"5–10 m/s",elevationInfo:{mode:"relative-to-ground",offset:30}});
+ const g3 = new GraphicsLayer({title:"10+ m/s",elevationInfo:{mode:"relative-to-ground",offset:35}});
+ map.addMany([base,g1,g2,g3]);
+
+ const center = new Point({longitude:LON,latitude:LAT,spatialReference:{wkid:4326}});
+ const ring = geometryEngine.geodesicBuffer(center,5,"miles");
+ base.add(new Graphic({
+   geometry:ring,
+   symbol:new SimpleFillSymbol({
+     color:[255,255,255,0.02],
+     outline:{color:[255,255,255,0.95],width:2,style:"dash"}
+   })
+ }));
+
+ function dest(lat1,lon1,bearing,distKm){
+   const R=6371.0088, br=bearing*Math.PI/180, p1=lat1*Math.PI/180, l1=lon1*Math.PI/180, d=distKm/R;
+   const p2=Math.asin(Math.sin(p1)*Math.cos(d)+Math.cos(p1)*Math.sin(d)*Math.cos(br));
+   const l2=l1+Math.atan2(Math.sin(br)*Math.sin(d)*Math.cos(p1),Math.cos(d)-Math.sin(p1)*Math.sin(p2));
+   return [l2*180/Math.PI,p2*180/Math.PI];
+ }
+
+ for(let b=0;b<360;b+=30){
+   const p=dest(LAT,LON,b,8.04672);
+   base.add(new Graphic({
+     geometry:new Polyline({paths:[[[LON,LAT],p]],spatialReference:{wkid:4326}}),
+     symbol:new SimpleLineSymbol({color:[255,255,255,0.32],width:1})
+   }));
+   const q=dest(LAT,LON,b,8.35);
+   base.add(new Graphic({
+     geometry:new Point({longitude:q[0],latitude:q[1]}),
+     symbol:{type:"text",text:b+"°",color:"white",haloColor:"black",haloSize:1,font:{size:10,weight:"bold"}}
+   }));
+ }
+
+ base.add(new Graphic({
+   geometry:center,
+   symbol:new SimpleMarkerSymbol({style:"circle",color:"white",size:10,outline:{color:"black",width:2}})
+ }));
+
+ function layerFor(bin){
+   if(bin==="1–5 m/s") return g1;
+   if(bin==="5–10 m/s") return g2;
+   return g3;
+ }
+ function radiusFor(bin){
+   if(bin==="1–5 m/s") return 2.5;
+   if(bin==="5–10 m/s") return 4.0;
+   return 5.5;
+ }
+ function colorFor(v){
+   if(v <= -2) return [8,48,107,0.95];
+   if(v <= -1) return [33,102,172,0.95];
+   if(v < 0) return [107,174,214,0.95];
+   if(v < 1) return [254,224,144,0.95];
+   if(v < 2) return [253,174,97,0.95];
+   return [215,48,39,0.95];
+ }
+
+ DATA.forEach(r=>{
+   const p=dest(LAT,LON,Number(r.dir_sector),radiusFor(r.speed_bin));
+   const layer=layerFor(r.speed_bin);
+   const bias=Number(r.mean_speed_error_ms);
+   layer.add(new Graphic({
+     geometry:new Point({longitude:p[0],latitude:p[1]}),
+     symbol:new SimpleMarkerSymbol({
+       style:"circle",
+       color:colorFor(bias),
+       size:Math.max(12,Math.min(24,10+4*Math.abs(bias))),
+       outline:{color:"white",width:1.5}
+     }),
+     attributes:r,
+     popupTemplate:{
+       title:r.speed_bin+" • "+r.dir_sector+"° sector",
+       content:
+        "<b>Mean HRRR − sensor:</b> "+bias.toFixed(2)+" m/s<br>"+
+        "<b>MAE:</b> "+Number(r.mae_speed_error_ms).toFixed(2)+" m/s<br>"+
+        "<b>RMSE:</b> "+Number(r.rmse_speed_error_ms).toFixed(2)+" m/s<br>"+
+        "<b>Mean observed speed:</b> "+Number(r.mean_obs_speed_ms).toFixed(2)+" m/s<br>"+
+        "<b>Samples:</b> "+Number(r.n).toLocaleString()
+     }
+   }));
+ });
+
+ document.getElementById("b1").onclick=()=>g1.visible=!g1.visible;
+ document.getElementById("b2").onclick=()=>g2.visible=!g2.visible;
+ document.getElementById("b3").onclick=()=>g3.visible=!g3.visible;
+
+ view.when(()=>view.goTo({target:ring,tilt:62,heading:0,scale:105000},{duration:1800}));
+});
+</script>
+</body>
+</html>
